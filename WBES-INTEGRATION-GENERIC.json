@@ -1,0 +1,64 @@
+{
+	"info": {
+		"_postman_id": "15ca2337-0829-487d-8378-f6556f42ac55",
+		"name": "WBES-INTEGRATION-ENTITY",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "34546593"
+	},
+	"item": [
+		{
+			"name": "Get Web Access API Data",
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "WbesInte@XYZ",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "usr_API_USR",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Date\":\"29-04-2026\",\r\n    \"SchdRevNo\": -1,\r\n    \"UserName\":\"usr_entity_integration\",\r\n    \"UtilAcronymList\": [\"RAJASTHAN_STATE\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://gateway.grid-india.in/POSOCO/reports/1.0/WebAccessAPI/GetUtilityExternalSharedData?apikey=APIKEY",
+					"protocol": "https",
+					"host": [
+						"gateway",
+						"grid-india",
+						"in"
+					],
+					"path": [
+						"POSOCO",
+						"reports",
+						"1.0",
+						"WebAccessAPI",
+						"GetUtilityExternalSharedData"
+					],
+					"query": [
+						{
+							"key": "apikey",
+							"value": "APIKEY"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

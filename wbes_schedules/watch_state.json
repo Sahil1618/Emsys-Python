@@ -1,0 +1,32 @@
+{
+  "by_qca": {
+    "EESPL_QCA_BKN": {
+      "date": "08-06-2026",
+      "revision": 111,
+      "last_snapshot": "wbes_schedules/EESPL_QCA_BKN/08-06-2026/snapshots/poll_20260608_153015_rev_111.json",
+      "last_polled_at": "2026-06-08T15:30:15",
+      "last_summary": "no changes detected"
+    },
+    "EESPL_QCA_BHDL": {
+      "date": "08-06-2026",
+      "revision": 111,
+      "last_snapshot": "wbes_schedules/EESPL_QCA_BHDL/08-06-2026/snapshots/poll_20260608_153016_rev_111.json",
+      "last_polled_at": "2026-06-08T15:30:16",
+      "last_summary": "no changes detected"
+    },
+    "EMSYS_QCA_BHDL_2": {
+      "date": "08-06-2026",
+      "revision": 111,
+      "last_snapshot": "wbes_schedules/EMSYS_QCA_BHDL_2/08-06-2026/snapshots/poll_20260608_153016_rev_111.json",
+      "last_polled_at": "2026-06-08T15:30:16",
+      "last_summary": "no changes detected"
+    },
+    "EESPL_QCA_BKN2": {
+      "date": "08-06-2026",
+      "revision": 111,
+      "last_snapshot": "wbes_schedules/EESPL_QCA_BKN2/08-06-2026/snapshots/poll_20260608_153017_rev_111.json",
+      "last_polled_at": "2026-06-08T15:30:17",
+      "last_summary": "no changes detected"
+    }
+  }
+}
