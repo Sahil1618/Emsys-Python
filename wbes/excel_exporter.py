@@ -45,6 +45,47 @@ def _row_bg(stype: str) -> str:
     return _WHITE
 
 
+def _dedup_rows(schedule_rows: list[dict]) -> list[dict]:
+    """
+    Drop duplicate schedule rows of ANY type (OA_REMC, AS, …).
+
+    Two rows are considered duplicates when they share the same
+    (type, seller, buyer, approval) key AND have identical block-level values.
+    The first occurrence is kept; subsequent exact duplicates are discarded
+    because they represent the same contract entry repeated, not additive energy.
+
+    Rows with different approval numbers or different block profiles are
+    kept as separate columns — only true duplicates are removed.
+    """
+    seen: dict[tuple, dict] = {}   # key → merged row
+    order: list[tuple] = []        # preserve insertion order
+
+    for row in schedule_rows:
+        blocks = row.get("blocks", [])
+        # Identity key: type + business fields + full block fingerprint
+        block_fp = tuple(round(v, 6) for v in blocks)
+        key = (
+            row.get("type", "").strip(),
+            row.get("seller", "").strip(),
+            row.get("buyer", "").strip(),
+            row.get("approval", "").strip(),
+            block_fp,
+        )
+
+        if key in seen:
+            # True duplicate — discard; the schedule is already represented.
+            # These are repeat entries of the same contract, NOT additive energy.
+            seen[key]["_dup_count"] = seen[key].get("_dup_count", 1) + 1
+        else:
+            merged = dict(row)          # shallow copy
+            merged["blocks"] = list(blocks)
+            merged["_dup_count"] = 1
+            seen[key] = merged
+            order.append(key)
+
+    return [seen[k] for k in order]
+
+
 def _build_plant_sheet(ws, plant: str, plant_rows: list[dict],
                        qca_name: str, date_str: str, revision: str) -> None:
     """
@@ -52,14 +93,17 @@ def _build_plant_sheet(ws, plant: str, plant_rows: list[dict],
 
     Layout (transposed):
       Col 1       = block label (B1..B96) / meta field name
-      Col 2..N    = one column per OA_REMC schedule
+      Col 2..N    = one column per OA_REMC schedule  (duplicates merged)
       Col N+1     = AS column
-      Col N+2     = Net Schedule  (Sum OA_REMC − AS)  ← NEW
+      Col N+2     = Net Schedule  (Sum OA_REMC − AS)
     """
 
-    # Separate OA_REMC rows and AS row
-    oa_rows  = [r for r in plant_rows if r["type"].startswith("OA")]
-    as_rows  = [r for r in plant_rows if r["type"] == "AS"]
+    # Separate OA_REMC rows and AS rows; deduplicate both independently
+    raw_oa_rows = [r for r in plant_rows if r["type"].startswith("OA")]
+    raw_as_rows = [r for r in plant_rows if r["type"] == "AS"]
+    oa_rows     = _dedup_rows(raw_oa_rows)   # ← dedup OA_REMC duplicates
+    as_rows     = _dedup_rows(raw_as_rows)   # ← dedup AS duplicates
+
     # Ordered: OA_REMC cols first, then AS col, then Net col
     ordered  = oa_rows + as_rows
     n_scheds = len(ordered)
@@ -106,8 +150,8 @@ def _build_plant_sheet(ws, plant: str, plant_rows: list[dict],
     _c(ws, 7, 1, "Daily Total\n(MW)", bold=True, fg=_WHITE,
        bg=_HDR_DARK, align="center", wrap=True, border=_BORDER)
 
-    oa_total = sum(r.get("daily_total_mw", 0.0) for r in oa_rows)
-    as_total = sum(r.get("daily_total_mw", 0.0) for r in as_rows)
+    oa_total  = sum(r.get("daily_total_mw", 0.0) for r in oa_rows)
+    as_total  = sum(r.get("daily_total_mw", 0.0) for r in as_rows)
     net_total = oa_total - as_total
 
     for col, srow in enumerate(ordered, start=2):
@@ -171,6 +215,8 @@ def export_schedule_to_excel(
     """
     Write block-wise schedule rows to Excel — one sheet per plant.
     Each sheet includes a Net Schedule column = Sum(OA_REMC) − AS per block.
+    Duplicate OA_REMC rows (same seller/buyer/approval/blocks) are merged
+    into a single column on their respective plant sheet only.
     """
     if not rows:
         raise ValueError("No schedule rows to export.")
@@ -205,7 +251,7 @@ def export_schedule_to_excel(
         _build_plant_sheet(ws, plant, by_plant[plant],
                            qca_name, date_str, revision)
 
-    # Summary sheet
+    # Summary sheet — uses original (non-deduped) rows for full accounting
     ws_sum = wb.create_sheet(title="Summary")
     _build_summary_sheet(ws_sum, plant_order, by_plant,
                          qca_name, date_str, revision)
