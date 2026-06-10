@@ -1,32 +1,32 @@
 {
   "by_qca": {
     "EESPL_QCA_BKN": {
-      "date": "09-06-2026",
-      "revision": 106,
-      "last_snapshot": "wbes_schedules/EESPL_QCA_BKN/09-06-2026/snapshots/poll_20260609_140018_rev_106.json",
-      "last_polled_at": "2026-06-09T14:00:18",
-      "last_summary": "no changes detected"
+      "date": "10-06-2026",
+      "revision": 95,
+      "last_snapshot": "wbes_schedules/EESPL_QCA_BKN/10-06-2026/snapshots/poll_20260610_113420_rev_95.json",
+      "last_polled_at": "2026-06-10T11:34:20",
+      "last_summary": "revision 94 -> 95, 14 schedule(s) with slot MW changes"
     },
     "EESPL_QCA_BHDL": {
-      "date": "09-06-2026",
-      "revision": 106,
-      "last_snapshot": "wbes_schedules/EESPL_QCA_BHDL/09-06-2026/snapshots/poll_20260609_140019_rev_106.json",
-      "last_polled_at": "2026-06-09T14:00:19",
-      "last_summary": "no changes detected"
+      "date": "10-06-2026",
+      "revision": 95,
+      "last_snapshot": "wbes_schedules/EESPL_QCA_BHDL/10-06-2026/snapshots/poll_20260610_113422_rev_95.json",
+      "last_polled_at": "2026-06-10T11:34:22",
+      "last_summary": "revision 94 -> 95, 20 schedule(s) with slot MW changes"
     },
     "EMSYS_QCA_BHDL_2": {
-      "date": "09-06-2026",
-      "revision": 106,
-      "last_snapshot": "wbes_schedules/EMSYS_QCA_BHDL_2/09-06-2026/snapshots/poll_20260609_140020_rev_106.json",
-      "last_polled_at": "2026-06-09T14:00:20",
-      "last_summary": "no changes detected"
+      "date": "10-06-2026",
+      "revision": 95,
+      "last_snapshot": "wbes_schedules/EMSYS_QCA_BHDL_2/10-06-2026/snapshots/poll_20260610_113423_rev_95.json",
+      "last_polled_at": "2026-06-10T11:34:23",
+      "last_summary": "revision 94 -> 95, 8 schedule(s) with slot MW changes"
     },
     "EESPL_QCA_BKN2": {
-      "date": "09-06-2026",
-      "revision": 106,
-      "last_snapshot": "wbes_schedules/EESPL_QCA_BKN2/09-06-2026/snapshots/poll_20260609_140021_rev_106.json",
-      "last_polled_at": "2026-06-09T14:00:21",
-      "last_summary": "no changes detected"
+      "date": "10-06-2026",
+      "revision": 95,
+      "last_snapshot": "wbes_schedules/EESPL_QCA_BKN2/10-06-2026/snapshots/poll_20260610_113424_rev_95.json",
+      "last_polled_at": "2026-06-10T11:34:24",
+      "last_summary": "revision 94 -> 95, 20 schedule(s) with slot MW changes"
     }
   }
 }

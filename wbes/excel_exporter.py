@@ -7,20 +7,19 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 # ── colour palette ─────────────────────────────────────────────────────────
-_HDR_DARK   = "1F4E79"   # dark blue  – title bar
-_HDR_MID    = "2E75B6"   # mid blue   – meta field labels
-_BLOCK_HDR  = "BDD7EE"   # light blue – block label column
-_AS_BG      = "E2EFDA"   # light green – AS rows
-_OA_BG      = "FCE4D6"   # light orange – OA_REMC rows
-_NET_BG     = "D9D2E9"   # light purple – Net Schedule column
-_NET_HDR    = "7030A0"   # purple – Net Schedule header
-_WHITE      = "FFFFFF"
+_HDR_DARK  = "1F4E79"   # dark blue  – title bar
+_HDR_MID   = "2E75B6"   # mid blue   – meta field labels
+_BLOCK_HDR = "BDD7EE"   # light blue – block label column
+_AS_BG     = "E2EFDA"   # light green – AS rows
+_OA_BG     = "FCE4D6"   # light orange – OA_REMC rows
+_NET_BG    = "D9D2E9"   # light purple – Net Schedule column
+_NET_HDR   = "7030A0"   # purple – Net Schedule header
+_WHITE     = "FFFFFF"
 
 _thin  = Side(style="thin",   color="BFBFBF")
 _thick = Side(style="medium", color="595959")
-_BORDER   = Border(left=_thin,  right=_thin,  top=_thin, bottom=_thin)
-_BORDER_R = Border(left=_thin,  right=_thick, top=_thin, bottom=_thin)
-_BORDER_L = Border(left=_thick, right=_thin,  top=_thin, bottom=_thin)
+_BORDER   = Border(left=_thin,  right=_thin,  top=_thin,  bottom=_thin)
+_BORDER_L = Border(left=_thick, right=_thin,  top=_thin,  bottom=_thin)
 
 
 def _c(ws, row, col, value="", bold=False, fg="000000", bg=None,
@@ -45,69 +44,26 @@ def _row_bg(stype: str) -> str:
     return _WHITE
 
 
-def _dedup_rows(schedule_rows: list[dict]) -> list[dict]:
-    """
-    Drop duplicate schedule rows of ANY type (OA_REMC, AS, …).
-
-    Two rows are considered duplicates when they share the same
-    (type, seller, buyer, approval) key AND have identical block-level values.
-    The first occurrence is kept; subsequent exact duplicates are discarded
-    because they represent the same contract entry repeated, not additive energy.
-
-    Rows with different approval numbers or different block profiles are
-    kept as separate columns — only true duplicates are removed.
-    """
-    seen: dict[tuple, dict] = {}   # key → merged row
-    order: list[tuple] = []        # preserve insertion order
-
-    for row in schedule_rows:
-        blocks = row.get("blocks", [])
-        # Identity key: type + business fields + full block fingerprint
-        block_fp = tuple(round(v, 6) for v in blocks)
-        key = (
-            row.get("type", "").strip(),
-            row.get("seller", "").strip(),
-            row.get("buyer", "").strip(),
-            row.get("approval", "").strip(),
-            block_fp,
-        )
-
-        if key in seen:
-            # True duplicate — discard; the schedule is already represented.
-            # These are repeat entries of the same contract, NOT additive energy.
-            seen[key]["_dup_count"] = seen[key].get("_dup_count", 1) + 1
-        else:
-            merged = dict(row)          # shallow copy
-            merged["blocks"] = list(blocks)
-            merged["_dup_count"] = 1
-            seen[key] = merged
-            order.append(key)
-
-    return [seen[k] for k in order]
-
-
 def _build_plant_sheet(ws, plant: str, plant_rows: list[dict],
                        qca_name: str, date_str: str, revision: str) -> None:
     """
     Write one plant's schedules onto a worksheet.
 
-    Layout (transposed):
-      Col 1       = block label (B1..B96) / meta field name
-      Col 2..N    = one column per OA_REMC schedule  (duplicates merged)
-      Col N+1     = AS column
-      Col N+2     = Net Schedule  (Sum OA_REMC − AS)
+    External OA_REMC rows (seller != plant) are completely excluded —
+    not shown as columns and not counted in Net Schedule.
+    Net Schedule = Sum(own OA_REMC) − AS per block.
     """
+    # Filter out external OA rows (seller != plant) entirely
+    own_rows = [
+        r for r in plant_rows
+        if not (r["type"].startswith("OA") and r.get("seller") != plant)
+    ]
 
-    # Separate OA_REMC rows and AS rows; deduplicate both independently
-    raw_oa_rows = [r for r in plant_rows if r["type"].startswith("OA")]
-    raw_as_rows = [r for r in plant_rows if r["type"] == "AS"]
-    oa_rows     = _dedup_rows(raw_oa_rows)   # ← dedup OA_REMC duplicates
-    as_rows     = _dedup_rows(raw_as_rows)   # ← dedup AS duplicates
-
-    # Ordered: OA_REMC cols first, then AS col, then Net col
+    oa_rows  = [r for r in own_rows if r["type"].startswith("OA")]
+    as_rows  = [r for r in own_rows if r["type"] == "AS"]
     ordered  = oa_rows + as_rows
     n_scheds = len(ordered)
-    net_col  = 2 + n_scheds   # column index for Net Schedule
+    net_col  = 2 + n_scheds
 
     # ── Row 1: title ────────────────────────────────────────────────────
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=net_col)
@@ -128,15 +84,13 @@ def _build_plant_sheet(ws, plant: str, plant_rows: list[dict],
     for r_off, (label, key) in enumerate(META):
         row = 2 + r_off
         ws.row_dimensions[row].height = 16
-        # Col A: field label
         _c(ws, row, 1, label, bold=True, fg=_WHITE, bg=_HDR_MID,
            align="center", border=_BORDER)
-        # Data cols
-        for col, srow in enumerate(ordered, start=2):
-            bg = _row_bg(srow["type"])
+        for i, srow in enumerate(ordered):
+            col = i + 2
+            bg  = _row_bg(srow["type"])
             _c(ws, row, col, srow.get(key, ""), bg=bg,
                align="center", wrap=True, border=_BORDER)
-        # Net Schedule header meta (only label in row 2, blank rest)
         if r_off == 0:
             _c(ws, row, net_col, "Net Schedule\n(OA − AS)",
                bold=True, fg=_WHITE, bg=_NET_HDR,
@@ -154,13 +108,13 @@ def _build_plant_sheet(ws, plant: str, plant_rows: list[dict],
     as_total  = sum(r.get("daily_total_mw", 0.0) for r in as_rows)
     net_total = oa_total - as_total
 
-    for col, srow in enumerate(ordered, start=2):
-        bg = _row_bg(srow["type"])
+    for i, srow in enumerate(ordered):
+        col = i + 2
+        bg  = _row_bg(srow["type"])
         _c(ws, 7, col, srow.get("daily_total_mw", 0.0),
            bold=True, bg=bg, align="right",
            border=_BORDER, num_fmt="#,##0.00")
 
-    # Net Schedule daily total
     _c(ws, 7, net_col, net_total,
        bold=True, fg=_WHITE, bg=_NET_HDR,
        align="right", border=_BORDER_L, num_fmt="#,##0.00")
@@ -170,32 +124,31 @@ def _build_plant_sheet(ws, plant: str, plant_rows: list[dict],
         row = 8 + b
         ws.row_dimensions[row].height = 13
 
-        hh, mm   = divmod(b * 15, 60)
+        hh,  mm  = divmod(b * 15, 60)
         ehh, emm = divmod((b + 1) * 15, 60)
-        label    = f"B{b+1}\n{hh:02d}:{mm:02d}-{ehh:02d}:{emm:02d}"
+        label = f"B{b+1}\n{hh:02d}:{mm:02d}-{ehh:02d}:{emm:02d}"
         _c(ws, row, 1, label, bold=True, bg=_BLOCK_HDR,
            align="center", wrap=True, border=_BORDER)
 
         oa_sum = 0.0
         as_val = 0.0
 
-        for col, srow in enumerate(ordered, start=2):
+        for i, srow in enumerate(ordered):
+            col    = i + 2
             blocks = srow.get("blocks", [])
-            val = blocks[b] if b < len(blocks) else 0.0
-            bg  = _row_bg(srow["type"])
+            val    = blocks[b] if b < len(blocks) else 0.0
+            bg     = _row_bg(srow["type"])
             _c(ws, row, col, val if val != 0.0 else 0,
                bg=bg, align="right",
                border=_BORDER, num_fmt="#,##0.00")
-
             if srow["type"].startswith("OA"):
                 oa_sum += val
             elif srow["type"] == "AS":
                 as_val += val
 
-        # Net Schedule = sum(OA_REMC) − AS  per block
         net_val = oa_sum - as_val
         _c(ws, row, net_col, round(net_val, 4) if net_val != 0.0 else 0,
-           bold=True, fg="000000", bg=_NET_BG,
+           bold=True, bg=_NET_BG,
            align="right", border=_BORDER_L, num_fmt="#,##0.00")
 
     # ── Column widths & freeze ────────────────────────────────────────────
@@ -212,25 +165,18 @@ def export_schedule_to_excel(
     date_str: str,
     output_path: str | None = None,
 ) -> str:
-    """
-    Write block-wise schedule rows to Excel — one sheet per plant.
-    Each sheet includes a Net Schedule column = Sum(OA_REMC) − AS per block.
-    Duplicate OA_REMC rows (same seller/buyer/approval/blocks) are merged
-    into a single column on their respective plant sheet only.
-    """
     if not rows:
         raise ValueError("No schedule rows to export.")
 
     revision = rows[0].get("revision", "NA")
 
     if output_path is None:
-        safe_date = date_str.replace("-", "")
+        safe_date   = date_str.replace("-", "")
         output_path = os.path.join(
             os.getcwd(),
             f"WBES_BlockWise_{qca_name}_{safe_date}_Rev{revision}.xlsx",
         )
 
-    # Group rows by plant, preserving order
     plant_order: list[str] = []
     by_plant: dict[str, list[dict]] = defaultdict(list)
     for row in rows:
@@ -251,7 +197,6 @@ def export_schedule_to_excel(
         _build_plant_sheet(ws, plant, by_plant[plant],
                            qca_name, date_str, revision)
 
-    # Summary sheet — uses original (non-deduped) rows for full accounting
     ws_sum = wb.create_sheet(title="Summary")
     _build_summary_sheet(ws_sum, plant_order, by_plant,
                          qca_name, date_str, revision)
@@ -262,8 +207,6 @@ def export_schedule_to_excel(
 
 def _build_summary_sheet(ws, plant_order, by_plant,
                           qca_name, date_str, revision) -> None:
-    """Summary: one row per schedule + Net Schedule total per plant."""
-
     ws.merge_cells("A1:G1")
     c = ws.cell(row=1, column=1,
                 value=f"Summary  |  {qca_name}  |  {date_str}  |  Rev {revision}")
@@ -281,13 +224,17 @@ def _build_summary_sheet(ws, plant_order, by_plant,
 
     data_row = 3
     for plant in plant_order:
-        plant_rows = by_plant[plant]
-        oa_total = sum(r["daily_total_mw"] for r in plant_rows if r["type"].startswith("OA"))
-        as_total = sum(r["daily_total_mw"] for r in plant_rows if r["type"] == "AS")
+        # Exclude external OA rows from summary too
+        plant_rows = [
+            r for r in by_plant[plant]
+            if not (r["type"].startswith("OA") and r.get("seller") != plant)
+        ]
+        oa_total  = sum(r["daily_total_mw"] for r in plant_rows if r["type"].startswith("OA"))
+        as_total  = sum(r["daily_total_mw"] for r in plant_rows if r["type"] == "AS")
         net_total = oa_total - as_total
 
         for srow in plant_rows:
-            bg = _row_bg(srow["type"])
+            bg   = _row_bg(srow["type"])
             vals = [
                 plant,
                 srow.get("type", ""),
@@ -295,7 +242,7 @@ def _build_summary_sheet(ws, plant_order, by_plant,
                 srow.get("buyer", ""),
                 srow.get("approval", ""),
                 srow.get("daily_total_mw", 0.0),
-                "",   # Net shown only on plant subtotal row
+                "",
             ]
             for col, val in enumerate(vals, 1):
                 nf = "#,##0.00" if col in (6, 7) else None
@@ -304,7 +251,6 @@ def _build_summary_sheet(ws, plant_order, by_plant,
                    border=_BORDER, num_fmt=nf)
             data_row += 1
 
-        # Plant net subtotal row
         _c(ws, data_row, 1, f"{plant} — Net", bold=True, fg=_WHITE,
            bg=_NET_HDR, align="left", border=_BORDER)
         for col in range(2, 7):
