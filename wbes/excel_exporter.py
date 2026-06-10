@@ -77,6 +77,7 @@ def _build_plant_sheet(ws, plant: str, plant_rows: list[dict],
     # ── Rows 2-5: meta header rows ───────────────────────────────────────
     META = [
         ("Schedule Type", "type"),
+        ("Sub Type",      "sub_type"),
         ("Seller",        "seller"),
         ("Buyer",         "buyer"),
         ("Approval No",   "approval"),
@@ -207,7 +208,7 @@ def export_schedule_to_excel(
 
 def _build_summary_sheet(ws, plant_order, by_plant,
                           qca_name, date_str, revision) -> None:
-    ws.merge_cells("A1:G1")
+    ws.merge_cells("A1:H1")
     c = ws.cell(row=1, column=1,
                 value=f"Summary  |  {qca_name}  |  {date_str}  |  Rev {revision}")
     c.font      = Font(name="Arial", bold=True, color=_WHITE, size=11)
@@ -215,7 +216,7 @@ def _build_summary_sheet(ws, plant_order, by_plant,
     c.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 22
 
-    headers = ["Plant", "Schedule Type", "Seller", "Buyer",
+    headers = ["Plant", "Schedule Type", "Sub Type", "Seller", "Buyer",
                "Approval No", "Daily Total (MW)", "Net Schedule (MW)"]
     for col, h in enumerate(headers, 1):
         _c(ws, 2, col, h, bold=True, fg=_WHITE, bg=_HDR_MID,
@@ -224,7 +225,6 @@ def _build_summary_sheet(ws, plant_order, by_plant,
 
     data_row = 3
     for plant in plant_order:
-        # Exclude external OA rows from summary too
         plant_rows = [
             r for r in by_plant[plant]
             if not (r["type"].startswith("OA") and r.get("seller") != plant)
@@ -238,6 +238,7 @@ def _build_summary_sheet(ws, plant_order, by_plant,
             vals = [
                 plant,
                 srow.get("type", ""),
+                srow.get("sub_type", ""),
                 srow.get("seller", ""),
                 srow.get("buyer", ""),
                 srow.get("approval", ""),
@@ -245,22 +246,22 @@ def _build_summary_sheet(ws, plant_order, by_plant,
                 "",
             ]
             for col, val in enumerate(vals, 1):
-                nf = "#,##0.00" if col in (6, 7) else None
+                nf = "#,##0.00" if col in (7, 8) else None
                 _c(ws, data_row, col, val, bg=bg,
-                   align="right" if col >= 6 else "left",
+                   align="right" if col >= 7 else "left",
                    border=_BORDER, num_fmt=nf)
             data_row += 1
 
         _c(ws, data_row, 1, f"{plant} — Net", bold=True, fg=_WHITE,
            bg=_NET_HDR, align="left", border=_BORDER)
-        for col in range(2, 7):
+        for col in range(2, 8):
             _c(ws, data_row, col, "", bg=_NET_BG, border=_BORDER)
-        _c(ws, data_row, 7, net_total, bold=True, fg=_WHITE,
+        _c(ws, data_row, 8, net_total, bold=True, fg=_WHITE,
            bg=_NET_HDR, align="right", border=_BORDER, num_fmt="#,##0.00")
         ws.row_dimensions[data_row].height = 16
         data_row += 1
 
-    widths = [22, 14, 18, 24, 32, 18, 18]
+    widths = [22, 14, 14, 18, 24, 32, 18, 18]
     for col, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(col)].width = w
     ws.freeze_panes = "A3"

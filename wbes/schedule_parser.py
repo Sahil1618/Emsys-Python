@@ -44,6 +44,7 @@ def iter_schedule_rows(data: dict, qca_name: str | None = None):
                 "qca":            qca_name,
                 "plant":          acronym,
                 "type":           sched.get("EnergyScheduleTypeName", "NA"),
+                "sub_type":       sched.get("EnergyScheduleSubTypeName", "NA"),
                 "seller":         sched.get("SellerAcronym", "NA"),
                 "buyer":          sched.get("BuyerAcronym", "NA"),
                 "approval":       sched.get("ApprovalNo", "NA"),
