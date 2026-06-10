@@ -26,6 +26,13 @@ QCA_LABELS = {
     "EESPL_QCA_BKN2": "EESPL_QCA_BKN2 (Bikaner Region 2)",
 }
 
+QCA_REGIONS = {
+    "EESPL_QCA_BKN":    "BKN",
+    "EESPL_QCA_BHDL":   "BHDL",
+    "EMSYS_QCA_BHDL_2": "BHDL2",
+    "EESPL_QCA_BKN2":   "BKN2",
+}
+
 
 def bootstrap_env_from_excel() -> bool:
     """Create .env from the Excel master sheet when missing or empty."""

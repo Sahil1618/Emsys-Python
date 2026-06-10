@@ -5,7 +5,7 @@ import time
 
 from rich.console import Console
 
-from wbes.config import SCHEDULES_ROOT
+from wbes.config import SCHEDULES_ROOT, QCA_REGIONS
 from wbes.reconcile import compare_schedules, format_change_summary
 from wbes.runner import resolve_qca_list, run_fetch_workflow
 from wbes.storage import append_change_log, save_poll_snapshot, save_watch_state, load_watch_state
@@ -76,7 +76,14 @@ def _export_to_excel(qca: str, date_str: str, data: dict) -> None:
             console.print(f"  [yellow][!] No rows for {qca} — Excel skipped.[/yellow]")
             return
 
-        path = export_schedule_to_excel(rows, qca, date_str)
+        # Convert date from DD-MM-YYYY (WBES format) to YYYY-MM-DD (folder format)
+        try:
+            iso_date = datetime.datetime.strptime(date_str, "%d-%m-%Y").strftime("%Y-%m-%d")
+        except ValueError:
+            iso_date = date_str  # fallback: use as-is if already in another format
+
+        region = QCA_REGIONS.get(qca, "UNKNOWN")
+        path   = export_schedule_to_excel(rows, qca, iso_date, region)
         console.print(f"  [bold green][✓] Excel saved:[/bold green] {path}")
 
     except Exception as exc:
